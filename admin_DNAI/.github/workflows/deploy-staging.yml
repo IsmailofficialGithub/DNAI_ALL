@@ -1,0 +1,177 @@
+name: Deploy to Staging Server
+
+on:
+  push:
+    branches:
+      - staging-ismail-admin-panel
+
+jobs:
+  validate:
+    name: Validate Backend and Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            front-end/package-lock.json
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install --legacy-peer-deps
+      
+      - name: Install curl (if needed)
+        run: |
+          if ! command -v curl &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y curl
+          fi
+      
+      - name: Test backend startup and port listening
+        working-directory: ./backend
+        env:
+          PORT: 8800
+          NODE_ENV: test
+          CLIENT_URL: https://devstage.duhanashrah.ai
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: test-key
+          SUPABASE_SERVICE_ROLE_KEY: test-key
+          STRIPE_SECRET_KEY: sk_test_dummy_key_for_validation_only
+          JWT_SECRET: test-jwt-secret-key-for-validation
+          SESSION_SECRET: test-session-secret-key
+        run: |
+          echo "Starting backend server for validation..."
+          npm start > server.log 2>&1 &
+          SERVER_PID=$!
+          
+          cleanup() {
+            kill $SERVER_PID 2>/dev/null || true
+            wait $SERVER_PID 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          
+          echo "Waiting for server to start on port 8800..."
+          for i in {1..30}; do
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ Backend server process crashed!"
+              cat server.log || true
+              exit 1
+            fi
+            
+            if curl -f http://localhost:8800/health > /dev/null 2>&1; then
+              SERVER_STARTED=true
+              echo "✅ Backend server is listening on port 8800"
+              break
+            fi
+            sleep 1
+          done
+          
+          if [ "$SERVER_STARTED" = false ]; then
+            echo "❌ Backend server failed to start"
+            cat server.log || true
+            exit 1
+          fi
+      
+      - name: Install frontend dependencies
+        working-directory: ./front-end
+        run: npm install --legacy-peer-deps
+      
+      - name: Build frontend
+        working-directory: ./front-end
+        env:
+          CI: false
+          SKIP_PREFLIGHT_CHECK: true
+          REACT_APP_Server_Url: https://devstage.duhanashrah.ai/api
+        run: npm run build
+      
+      - name: Verify build output
+        working-directory: ./front-end
+        run: |
+          if [ ! -d "build" ] || [ ! -f "build/index.html" ]; then
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to staging server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SERVER_HOST }}
+          username: ${{ secrets.STAGING_SERVER_USER }}
+          key: ${{ secrets.STAGING_SERVER_SSH_KEY }}
+          port: ${{ secrets.STAGING_SERVER_PORT || 22 }}
+          timeout: 300s
+          script: |
+            set -e
+            
+            echo "🚀 Starting staging deployment..."
+            
+            # Navigate to staging project directory
+            cd /root/staging-admin-panel
+            
+            # Fetch latest code from staging branch
+            git fetch origin staging-ismail-admin-panel
+            git reset --hard origin/staging-ismail-admin-panel
+            
+            # Backend deployment
+            echo "📦 Installing backend dependencies..."
+            cd backend
+            npm install --legacy-peer-deps
+            
+            echo "🔄 Restarting backend with PM2..."
+            pm2 restart staging-admin-backend || pm2 start ecosystem.config.cjs
+            pm2 save
+            
+            # Wait a moment for backend to start
+            sleep 3
+            
+            # Verify backend is running
+            if curl -f http://localhost:8800/health > /dev/null 2>&1; then
+              echo "✅ Backend is running on port 8800"
+            else
+              echo "⚠️ Backend health check failed, but continuing..."
+            fi
+            
+            # Frontend deployment
+            echo "📦 Installing frontend dependencies..."
+            cd ../front-end
+            npm install --legacy-peer-deps
+            
+            echo "🏗️ Building frontend..."
+            npm run build
+            
+            echo "📦 Creating backup..."
+            BACKUP_NAME="backup_$(date +'%Y%m%d_%H%M%S')"
+            sudo mkdir -p /var/www/backups
+            if [ -d "/var/www/devstage.duhanashrah.ai" ]; then
+                sudo cp -r /var/www/devstage.duhanashrah.ai "/var/www/backups/$BACKUP_NAME"
+                echo "✅ Backup created: $BACKUP_NAME"
+            fi
+            
+            echo "📤 Deploying frontend build..."
+            sudo mkdir -p /var/www/devstage.duhanashrah.ai
+            sudo rm -rf /var/www/devstage.duhanashrah.ai/*
+            sudo cp -r build/* /var/www/devstage.duhanashrah.ai/
+            sudo chown -R www-data:www-data /var/www/devstage.duhanashrah.ai
+            sudo chmod -R 755 /var/www/devstage.duhanashrah.ai
+            
+            echo "🔄 Reloading Nginx..."
+            sudo systemctl reload nginx
+            
+            echo "🎉 Staging deployment completed successfully!"
+            echo "🌐 Frontend: https://devstage.duhanashrah.ai"
+            echo "🔌 Backend: https://devstage.duhanashrah.ai/api"

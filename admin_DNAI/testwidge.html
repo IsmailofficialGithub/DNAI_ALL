@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+
+    
+    <!-- Support Widget Script -->
+    <script src="http://localhost:3000/support-widget.js"></script>
+    <script>
+        SupportWidget.init({
+            apiUrl: 'http://localhost:5000/api/public/customer-support',
+            apiKey: '1234567890', // Optional
+            buttonText: 'Contact Support',
+            position: 'bottom-left', // bottom-right, bottom-left, top-right, top-left
+            // Optional: User information for auto-fill
+            userId: 'user-123', // Optional: User ID
+            userName: 'John Doe', // Optional: User name (auto-fills form)
+            userEmail: 'ismail.official295@gmail.com', // Optional: User email (auto-fills form and tickets search)
+            // Optional: Supabase config for real-time messaging
+            // supabaseUrl: 'https://your-project.supabase.co',
+            // supabaseKey: 'your-anon-key'
+        });
+    </script>
+
+</body>
+</html>

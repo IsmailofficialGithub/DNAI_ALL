@@ -1,0 +1,387 @@
+import { createTransport } from "nodemailer";
+import dotenv from "dotenv";
+import {
+  AdminEmailTemplateUserCreated,
+  PasswordResetTemplate,
+  TrialPeriodChangeTemplate,
+  TrialExtensionTemplate,
+  InvoiceCreatedTemplate,
+  InviteEmailTemplate,
+} from "../utils/emailTemplates.js";
+import { encryptPaymentData } from "../utils/encryption.js";
+
+dotenv.config();
+
+/**
+ * Email Service for sending transactional emails
+ */
+
+// Create nodemailer transporter
+const user = process.env.AdminEmail;
+const pass = process.env.Nodemailer_Google_App_Password;
+
+export const transporter = createTransport({
+  service: "gmail",
+  auth: {
+    user,
+    pass,
+  },
+});
+
+/**
+ * Send welcome email to new user
+ * @param {Object} params - Email parameters
+ * @param {string} params.email - Recipient email
+ * @param {string} params.full_name - User's full name
+ * @param {string} params.password - Temporary password
+ * @param {string} params.role - User role (user, reseller, consumer, admin)
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendWelcomeEmail = async ({ email, full_name, password, role = 'user' }) => {
+  try {
+    // Verify transporter is ready
+    const verified = await transporter.verify();
+    if (!verified) {
+      throw new Error("Email server not ready");
+    }
+
+    // HARDCODED: Consumers ALWAYS use https://social.duhanashrah.ai/ - no exceptions
+    // CLIENT_URL is the admin panel URL - we NEVER use it for consumers
+    // This ensures consumers never get redirected to admin panel, regardless of env vars
+    const website_url = role === 'consumer'
+      ? 'https://social.duhanashrah.ai/'  // Hardcoded - ignores CLIENT_URL completely
+      : (process.env.CLIENT_URL || "");   // Only non-consumers use CLIENT_URL (admin panel)
+
+    // Debug log to verify consumer URL is set correctly
+    if (role === 'consumer') {
+      console.log('🔗 Consumer email - Using HARDCODED URL (CLIENT_URL ignored):', website_url);
+    }
+
+    const htmlContent = AdminEmailTemplateUserCreated({
+      full_name,
+      email,
+      password,
+      role,
+      website_url,
+    });
+
+    // Role-based subject line
+    const roleSubjects = {
+      consumer: `Your DNAI account has been created`,
+      reseller: `Your DNAI Reseller account has been created`,
+      admin: `Welcome Administrator: ${full_name}`,
+      user: `New User Created: ${full_name}`
+    };
+
+    const ownerMail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: roleSubjects[role] || roleSubjects.user,
+      html: htmlContent,
+    };
+
+    console.log(`📧 Sending custom welcome email to ${role}:`, email);
+    await transporter.sendMail(ownerMail);
+    console.log("✅ Welcome email sent successfully");
+
+    return {
+      success: true,
+      message: "Welcome email sent successfully",
+      email,
+    };
+  } catch (error) {
+    console.error("❌ Error sending welcome email:", error);
+    throw error;
+  }
+};
+
+/**
+ * Send password reset email
+ * @param {Object} params - Email parameters
+ * @param {string} params.email - Recipient email
+ * @param {string} params.full_name - User's full name
+ * @param {string} params.new_password - New password
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendPasswordResetEmail = async ({
+  email,
+  full_name,
+  new_password,
+}) => {
+  try {
+    // Verify transporter is ready
+    await transporter.verify();
+
+    const website_url = process.env.CLIENT_URL || "http://localhost:3000";
+
+    const htmlContent = PasswordResetTemplate({
+      full_name,
+      new_password,
+      website_url,
+    });
+
+    const resetMail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: `Password Reset: ${full_name}`,
+      html: htmlContent,
+    };
+
+    console.log("📧 Sending password reset email to:", email);
+    await transporter.sendMail(resetMail);
+    console.log("✅ Password reset email sent successfully");
+
+    return {
+      success: true,
+      message: "Password reset email sent successfully",
+      email,
+    };
+  } catch (error) {
+    console.error("❌ Error sending password reset email:", error);
+    throw error;
+  }
+};
+
+/**
+ * Test email configuration
+ * @returns {Promise<boolean>} True if email is configured correctly
+ */
+export const testEmailConfiguration = async () => {
+  try {
+    await transporter.verify();
+    console.log("✅ Email service is ready to send emails");
+    return true;
+  } catch (error) {
+    console.error("❌ Email configuration error:", error.message);
+    console.warn(
+      "⚠️  Email service will not work. Please configure AdminEmail and Nodemailer_Google_App_Password in .env"
+    );
+    return false;
+  }
+};
+
+/**
+ * Send trial period change email
+ * @param {Object} params - Email parameters
+ * @param {string} params.email - Recipient email
+ * @param {string} params.full_name - User's full name
+ * @param {string} params.old_trial_date - Previous trial expiry date
+ * @param {string} params.new_trial_date - New trial expiry date
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendTrialPeriodChangeEmail = async ({
+  email,
+  full_name,
+  old_trial_date,
+  new_trial_date,
+}) => {
+  try {
+    // Verify transporter is ready
+    await transporter.verify();
+
+    const website_url = process.env.CLIENT_URL || "http://localhost:3000";
+
+    const htmlContent = TrialPeriodChangeTemplate({
+      full_name,
+      old_trial_date,
+      new_trial_date,
+      website_url,
+    });
+
+    const mail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: `Trial Period Updated: ${full_name}`,
+      html: htmlContent,
+    };
+
+    console.log("📧 Sending trial period change email to:", email);
+    await transporter.sendMail(mail);
+    console.log("✅ Trial period change email sent successfully");
+
+    return {
+      success: true,
+      message: "Trial period change email sent successfully",
+      email,
+    };
+  } catch (error) {
+    console.error("❌ Error sending trial period change email:", error);
+    throw error;
+  }
+};
+
+/**
+ * Send trial extension email
+ * @param {Object} params - Email parameters
+ * @param {string} params.email - Recipient email
+ * @param {string} params.full_name - User's full name
+ * @param {string} params.new_trial_date - New trial expiry date
+ * @param {number} params.extension_days - Number of days extended
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendTrialExtensionEmail = async ({
+  email,
+  full_name,
+  new_trial_date,
+  extension_days,
+}) => {
+  try {
+    // Verify transporter is ready
+    await transporter.verify();
+
+    const website_url = process.env.CLIENT_URL || "http://localhost:3000";
+
+    const htmlContent = TrialExtensionTemplate({
+      full_name,
+      new_trial_date,
+      extension_days,
+      website_url,
+    });
+
+    const mail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: `Trial Extended: ${full_name}`,
+      html: htmlContent,
+    };
+
+    console.log("📧 Sending trial extension email to:", email);
+    await transporter.sendMail(mail);
+    console.log("✅ Trial extension email sent successfully");
+
+    return {
+      success: true,
+      message: "Trial extension email sent successfully",
+      email,
+    };
+  } catch (error) {
+    console.error("❌ Error sending trial extension email:", error);
+    throw error;
+  }
+};
+
+/**
+ * Send invitation email to user
+ * @param {Object} params - Email parameters
+ * @param {string} params.email - Recipient email
+ * @param {string} params.role - User role (user, reseller, consumer)
+ * @param {string} params.invite_url - Invitation signup URL with token
+ * @param {string} params.inviter_name - Name of person who sent the invite
+ * @returns {Promise<Object>} Email send result
+ */
+export const sendInviteEmail = async ({
+  email,
+  role = 'user',
+  invite_url,
+  inviter_name = 'Admin',
+}) => {
+  try {
+    // Verify transporter is ready
+    await transporter.verify();
+
+    const website_url = process.env.CLIENT_URL || "http://localhost:3000";
+
+    const htmlContent = InviteEmailTemplate({
+      email,
+      role,
+      invite_url,
+      website_url,
+      inviter_name,
+    });
+
+    const mail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: `You're Invited to Join as ${role.charAt(0).toUpperCase() + role.slice(1)}!`,
+      html: htmlContent,
+    };
+
+    console.log("📧 Sending invitation email to:", email);
+    await transporter.sendMail(mail);
+    console.log("✅ Invitation email sent successfully");
+
+    return {
+      success: true,
+      message: "Invitation email sent successfully",
+      email,
+    };
+  } catch (error) {
+    console.error("❌ Error sending invitation email:", error);
+    throw error;
+  }
+};
+
+export default {
+  transporter,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendTrialPeriodChangeEmail,
+  sendTrialExtensionEmail,
+  sendInviteEmail,
+  testEmailConfiguration,
+};
+
+/**
+ * Send invoice created email
+ * @param {Object} params
+ * @param {string} params.email
+ * @param {string} params.full_name
+ * @param {string} params.invoice_number
+ * @param {string|number} params.total
+ * @param {string} params.due_date
+ */
+export const sendInvoiceCreatedEmail = async ({ email, full_name, invoice_number, invoice_id = '', user_id = '', issue_date, due_date, subtotal, tax_total, total, items = [], created_by_name = 'Admin', created_by_role = 'admin' }) => {
+  try {
+    // Removed transporter.verify() - it's slow (2-3 seconds) and not needed for each email
+    // Verification should be done once at server startup if needed
+    const website_url = process.env.CLIENT_URL || "http://localhost:3000";
+
+    // Encrypt payment data for secure URL (required)
+    if (!invoice_id || !user_id || !invoice_number || !total) {
+      throw new Error('Missing required invoice data for payment link encryption');
+    }
+
+    let encryptedData;
+    try {
+      encryptedData = encryptPaymentData({
+        amount: typeof total === 'number' ? total.toFixed(2) : String(total),
+        invoice_id,
+        user_id,
+        invoice_number
+      });
+    } catch (encryptError) {
+      console.error('Error encrypting payment data:', encryptError);
+      throw new Error('Failed to encrypt payment data. Cannot send invoice email.');
+    }
+
+    const htmlContent = InvoiceCreatedTemplate({
+      full_name,
+      invoice_number,
+      invoice_id: invoice_id || '',
+      user_id: user_id || '',
+      issue_date,
+      subtotal,
+      tax_total,
+      total: typeof total === 'number' ? total.toFixed(2) : String(total),
+      due_date,
+      items,
+      created_by_name,
+      created_by_role,
+      website_url,
+      encrypted_data: encryptedData, // Pass encrypted data to template
+    });
+    const mail = {
+      from: `"Duha Nashrah" <${process.env.AdminEmail}>`,
+      to: email,
+      subject: `Invoice Created: ${invoice_number}`,
+      html: htmlContent,
+    };
+    console.log("📧 Sending invoice created email to:", email);
+    await transporter.sendMail(mail);
+    console.log("✅ Invoice created email sent successfully");
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Error sending invoice created email:", error);
+    return { success: false, error: error.message };
+  }
+};

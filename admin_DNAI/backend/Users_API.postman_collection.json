@@ -1,0 +1,331 @@
+{
+	"info": {
+		"_postman_id": "users-api-collection",
+		"name": "Users API - Complete Collection",
+		"description": "Complete collection for testing all Users API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"item": [
+		{
+			"name": "1. Get All Users",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/users?page=1&limit=50&search=",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1",
+							"description": "Page number (default: 1)"
+						},
+						{
+							"key": "limit",
+							"value": "50",
+							"description": "Items per page (default: 50, max: 100)"
+						},
+						{
+							"key": "search",
+							"value": "",
+							"description": "Search term for name or email",
+							"disabled": true
+						}
+					]
+				},
+				"description": "Get all users with pagination and search support"
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get User by ID",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/users/:id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "user-uuid-here",
+							"description": "User UUID"
+						}
+					]
+				},
+				"description": "Get a specific user by their ID"
+			},
+			"response": []
+		},
+		{
+			"name": "3. Create New User",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"Jane Doe\",\n  \"role\": \"user\",\n  \"phone\": \"+1234567890\",\n  \"country\": \"USA\",\n  \"city\": \"Los Angeles\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				},
+				"description": "Create a new user account"
+			},
+			"response": []
+		},
+		{
+			"name": "4. Update User",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"full_name\": \"John Updated\",\n  \"role\": \"user\",\n  \"phone\": \"+9876543210\",\n  \"country\": \"Canada\",\n  \"city\": \"Toronto\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users/:id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "user-uuid-here",
+							"description": "User UUID"
+						}
+					]
+				},
+				"description": "Update an existing user's information"
+			},
+			"response": []
+		},
+		{
+			"name": "5. Delete User",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{base_url}}/api/users/:id",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						":id"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "user-uuid-here",
+							"description": "User UUID"
+						}
+					]
+				},
+				"description": "Delete a user account"
+			},
+			"response": []
+		},
+		{
+			"name": "6. Reset User Password",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users/:id/reset-password",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						":id",
+						"reset-password"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "user-uuid-here",
+							"description": "User UUID"
+						}
+					]
+				},
+				"description": "Reset a user's password (admin only)"
+			},
+			"response": []
+		},
+		{
+			"name": "7. Create Reseller",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"reseller@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"full_name\": \"Reseller Name\",\n  \"phone\": \"+1234567890\",\n  \"country\": \"USA\",\n  \"city\": \"New York\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users/create-reseller",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"create-reseller"
+					]
+				},
+				"description": "Create a new reseller account"
+			},
+			"response": []
+		},
+		{
+			"name": "8. Update Account Status",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"account_status\": \"deactive\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users/:id/account-status",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						":id",
+						"account-status"
+					],
+					"variable": [
+						{
+							"key": "id",
+							"value": "user-uuid-here",
+							"description": "User UUID"
+						}
+					]
+				},
+				"description": "Update a user's account status (active/deactive)"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

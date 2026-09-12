@@ -1,0 +1,162 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - ismail-admin-panel
+  workflow_dispatch:  # Add this to enable manual runs
+
+jobs:
+  validate:
+    name: Validate Backend and Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            front-end/package-lock.json
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install --legacy-peer-deps
+      
+      - name: Install curl (if needed)
+        run: |
+          if ! command -v curl &> /dev/null; then
+            sudo apt-get update && sudo apt-get install -y curl
+          fi
+      
+      - name: Test backend startup and port listening
+        working-directory: ./backend
+        env:
+          PORT: 5000
+          NODE_ENV: test
+          CLIENT_URL: http://localhost:3000
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: test-key
+          SUPABASE_SERVICE_ROLE_KEY: test-key
+          STRIPE_SECRET_KEY: sk_test_dummy_key_for_validation_only
+          JWT_SECRET: test-jwt-secret-key-for-validation
+          SESSION_SECRET: test-session-secret-key
+        run: |
+          echo "Starting backend server for validation..."
+          npm start > server.log 2>&1 &
+          SERVER_PID=$!
+          
+          cleanup() {
+            kill $SERVER_PID 2>/dev/null || true
+            wait $SERVER_PID 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          
+          echo "Waiting for server to start on port 5000..."
+          SERVER_STARTED=false
+          for i in {1..30}; do
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "❌ Backend server process crashed!"
+              cat server.log || true
+              exit 1
+            fi
+            
+            if curl -f http://localhost:5000/health > /dev/null 2>&1; then
+              SERVER_STARTED=true
+              echo "✅ Backend server is listening on port 5000"
+              break
+            fi
+            sleep 1
+          done
+          
+          if [ "$SERVER_STARTED" = false ]; then
+            echo "❌ Backend server failed to start"
+            cat server.log || true
+            exit 1
+          fi
+      
+      - name: Install frontend dependencies
+        working-directory: ./front-end
+        run: npm install --legacy-peer-deps
+      
+      - name: Build frontend
+        working-directory: ./front-end
+        env:
+          CI: false
+          SKIP_PREFLIGHT_CHECK: true
+        run: npm run build
+      
+      - name: Verify build output
+        working-directory: ./front-end
+        run: |
+          if [ ! -d "build" ] || [ ! -f "build/index.html" ]; then
+            echo "❌ Frontend build failed"
+            exit 1
+          fi
+
+  approve-deployment:
+    name: Approve Deployment
+    runs-on: ubuntu-latest
+    needs: validate
+    environment:
+      name: production
+    
+    steps:
+      - name: Wait for manual approval
+        run: echo "⏸️ Deployment is waiting for manual approval"
+
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+    needs: approve-deployment
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 38877 }}
+          timeout: 300s
+          script: |
+            set -e
+            
+            cd ~/admin-pannel/admin-panel
+            git fetch origin ismail-admin-panel
+            git reset --hard origin/ismail-admin-panel
+            
+            # Backend
+            cd backend
+            npm install --legacy-peer-deps
+            pm2 restart backend-api || pm2 start npm --name "backend-api" -- start
+            pm2 save
+            
+            # Frontend (Static)
+            cd ../front-end
+            npm install --legacy-peer-deps
+            npm run build
+            
+            echo "📦 Creating backup..."
+            BACKUP_NAME="backup_$(date +'%Y%m%d_%H%M%S')"
+            sudo mkdir -p /var/www/backups
+            if [ -d "/var/www/html/admin-panel" ]; then
+                sudo cp -r /var/www/html/admin-panel "/var/www/backups/$BACKUP_NAME"
+            fi
+            
+            sudo mkdir -p /var/www/html/admin-panel
+            sudo rm -rf /var/www/html/admin-panel/*
+            sudo cp -r build/* /var/www/html/admin-panel/
+            
+            echo "🔄 Reloading Nginx..."
+            sudo systemctl reload nginx
+            
+            echo "🎉 Deployment completed!"

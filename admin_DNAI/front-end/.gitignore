@@ -1,0 +1,54 @@
+# =========================
+# ENVIRONMENT FILES
+# =========================
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# =========================
+# DEPENDENCIES
+# =========================
+node_modules/
+.pnpm-store/
+.bun/
+.yarn/
+.yarn-cache/
+.yarnrc.yml
+
+# =========================
+# BUILD OUTPUT
+# =========================
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+
+# =========================
+# SYSTEM FILES
+# =========================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# =========================
+# EDITOR / IDE FILES
+# =========================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+# TEMP FILES
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.tmp/
+.cache/

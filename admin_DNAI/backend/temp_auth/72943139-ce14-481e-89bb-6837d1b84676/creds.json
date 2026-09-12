@@ -1,0 +1,82 @@
+{
+  "noiseKey": {
+    "private": {
+      "type": "Buffer",
+      "data": "WIxLv+zMTBKL80pGzGswYjSJ777MBqrjXu8FKXOD528="
+    },
+    "public": {
+      "type": "Buffer",
+      "data": "u7vqMj2bIWI20fAGDKcwT7xAB3aN5hKhENzTeA4/BVw="
+    }
+  },
+  "pairingEphemeralKeyPair": {
+    "private": {
+      "type": "Buffer",
+      "data": "4E35E4/i3zoHLdhP2Rm5/oSoakRN9tCU/ovJ3bCR83k="
+    },
+    "public": {
+      "type": "Buffer",
+      "data": "WTspOYGstUdM3wOv0mWD7SwLtr03kpRERMcY4hE03Tg="
+    }
+  },
+  "signedIdentityKey": {
+    "private": {
+      "type": "Buffer",
+      "data": "GIujY5RnCRtP/8mn9t0q4GJB1EzZg3eTYaAOdkJTw18="
+    },
+    "public": {
+      "type": "Buffer",
+      "data": "f3dN49CFb8qUIgWNpQya0txoNIvqOesBgBLneeER8HI="
+    }
+  },
+  "signedPreKey": {
+    "keyPair": {
+      "private": {
+        "type": "Buffer",
+        "data": "ENditqDklMl6RF9IlfulbrWCIkp95yfeSjmT1Vn8f14="
+      },
+      "public": {
+        "type": "Buffer",
+        "data": "XMgB9MoVXXUCFblJZpmbGBlJnaNi/fnh2t8opbcjVl8="
+      }
+    },
+    "signature": {
+      "type": "Buffer",
+      "data": "5e+ppoE1WVVlh5GWXYqsiiPV0fNFFhvEnWtPqBsjS5hJQ1NsvK6jFbiCsLNB1IFlI30diKrtgwpi9t/iSHkMgA=="
+    },
+    "keyId": 1
+  },
+  "registrationId": 212,
+  "advSecretKey": "qHMMDQ2Hlt5Sb83MXi+E2yBz6fTQCJwnl5pDobUFE8E=",
+  "processedHistoryMessages": [],
+  "nextPreKeyId": 1,
+  "firstUnuploadedPreKeyId": 1,
+  "accountSyncCounter": 0,
+  "accountSettings": {
+    "unarchiveChats": false
+  },
+  "registered": false,
+  "account": {
+    "details": "CJqs2+IHELvmzssGGAEgACgA",
+    "accountSignatureKey": "NNDZ6JU1MqLaFzDIKs4H1JqJrXt5DEK0DqwRxd2LzU0=",
+    "accountSignature": "zsFeVDVzNL+uOvKCWbSolVmWkWnJzFWVqynySDpknmixjTejtTzVqY+iAejN/XBbGQ2LOGhcPc+CnzuJXP9vAA==",
+    "deviceSignature": "QVGOV/VTvqVYFHmP/hmpA9NmdFz+xhYj8L8Q/IjQ2zcYUzM5QGKA/qsJdJL/IWWGlyBFnTCxkMl+jDWlJQmphQ=="
+  },
+  "me": {
+    "id": "923195163131:6@s.whatsapp.net",
+    "name": ".qq"
+  },
+  "signalIdentities": [
+    {
+      "identifier": {
+        "name": "923195163131:6@s.whatsapp.net",
+        "deviceId": 0
+      },
+      "identifierKey": {
+        "type": "Buffer",
+        "data": "BTTQ2eiVNTKi2hcwyCrOB9Saia17eQxCtA6sEcXdi81N"
+      }
+    }
+  ],
+  "platform": "smba"
+}

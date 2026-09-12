@@ -1,0 +1,149 @@
+# Manual rollback for staging inbound (does not require a new push).
+# Required secrets: same as staging-inbound-deploy.yml
+#
+# rollback_mode:
+#   previous_commit — reset repo to commit before last deploy (.deploy-previous-sha)
+#   git_commit      — reset repo to rollback_commit (full SHA)
+#   static_backup   — restore /var/www from a backup folder name under inbound2_staging_DNai_deploy_backups
+
+name: Staging Inbound Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_mode:
+        description: "How to roll back"
+        required: true
+        type: choice
+        options:
+          - previous_commit
+          - git_commit
+          - static_backup
+        default: previous_commit
+      rollback_commit:
+        description: "Full git SHA (only for git_commit mode)"
+        required: false
+        type: string
+      backup_name:
+        description: "Backup folder name (only for static_backup mode), e.g. backup-20260519-143022-abc1234"
+        required: false
+        type: string
+      reload_backend:
+        description: "Run backend npm install and pm2 reload 4"
+        required: true
+        type: boolean
+        default: true
+      rebuild_frontend:
+        description: "Run npm run build after git rollback"
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  rollback:
+    name: Roll back staging server
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Roll back over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          ROLLBACK_MODE: ${{ github.event.inputs.rollback_mode }}
+          ROLLBACK_COMMIT: ${{ github.event.inputs.rollback_commit }}
+          BACKUP_NAME: ${{ github.event.inputs.backup_name }}
+          RELOAD_BACKEND: ${{ github.event.inputs.reload_backend }}
+          REBUILD_FRONTEND: ${{ github.event.inputs.rebuild_frontend }}
+          APP_ROOT: staging-retail-inbound/inbound-call-agent-core
+          WEB_ROOT: /var/www/inbound2_staging_DNai
+          BACKUP_ROOT: /var/www/inbound2_staging_DNai_deploy_backups
+        with:
+          host: ${{ secrets.INBOUND2_SERVER_IP }}
+          username: ${{ secrets.INBOUND2_SERVER_USER }}
+          password: ${{ secrets.INBOUND2_SERVER_PASSWORD }}
+          port: ${{ secrets.INBOUND2_SERVER_PORT }}
+          envs: ROLLBACK_MODE,ROLLBACK_COMMIT,BACKUP_NAME,RELOAD_BACKEND,REBUILD_FRONTEND,APP_ROOT,WEB_ROOT,BACKUP_ROOT
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            APP_DIR="${HOME}/${APP_ROOT}"
+            cd "$APP_DIR"
+            SSH_KEY="$(dirname "$APP_DIR")/server-staging"
+            if [ -f "$SSH_KEY" ]; then
+              chmod 600 "$SSH_KEY"
+              export GIT_SSH_COMMAND="ssh -i $SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            else
+              echo "ERROR: SSH deploy key not found: $SSH_KEY"
+              exit 1
+            fi
+
+            case "$ROLLBACK_MODE" in
+              previous_commit)
+                if [ ! -f .deploy-previous-sha ]; then
+                  echo "ERROR: .deploy-previous-sha not found. Use git_commit mode with a SHA from: git log --oneline -20"
+                  exit 1
+                fi
+                TARGET_SHA="$(cat .deploy-previous-sha)"
+                echo "Rolling back git to previous deploy commit: $TARGET_SHA"
+                git fetch origin staging-inbound
+                git reset --hard "$TARGET_SHA"
+                ;;
+              git_commit)
+                if [ -z "${ROLLBACK_COMMIT:-}" ]; then
+                  echo "ERROR: rollback_commit is required for git_commit mode"
+                  exit 1
+                fi
+                TARGET_SHA="$ROLLBACK_COMMIT"
+                echo "Rolling back git to: $TARGET_SHA"
+                git fetch origin staging-inbound
+                git reset --hard "$TARGET_SHA"
+                ;;
+              static_backup)
+                if [ -z "${BACKUP_NAME:-}" ]; then
+                  echo "ERROR: backup_name is required for static_backup mode"
+                  echo "Available backups:"
+                  sudo ls -1 "$BACKUP_ROOT" 2>/dev/null || true
+                  exit 1
+                fi
+                if [ ! -d "$BACKUP_ROOT/$BACKUP_NAME" ]; then
+                  echo "ERROR: Backup not found: $BACKUP_ROOT/$BACKUP_NAME"
+                  sudo ls -1 "$BACKUP_ROOT" 2>/dev/null || true
+                  exit 1
+                fi
+                echo "Restoring static files from $BACKUP_ROOT/$BACKUP_NAME"
+                sudo rm -rf "${WEB_ROOT:?}"/*
+                sudo cp -a "$BACKUP_ROOT/$BACKUP_NAME/." "$WEB_ROOT/"
+                if sudo nginx -t; then
+                  sudo systemctl reload nginx || sudo nginx -s reload
+                fi
+                echo "Static backup restore complete."
+                exit 0
+                ;;
+              *)
+                echo "ERROR: Unknown rollback_mode: $ROLLBACK_MODE"
+                exit 1
+                ;;
+            esac
+
+            if [ "$RELOAD_BACKEND" = "true" ]; then
+              cd backend
+              npm ci --omit=dev || npm install
+              pm2 reload 4
+              cd ..
+            fi
+
+            if [ "$REBUILD_FRONTEND" = "true" ]; then
+              npm ci --omit=dev 2>/dev/null || npm install
+              npm run build
+              sudo mkdir -p "$WEB_ROOT"
+              sudo cp -r build/* "$WEB_ROOT/"
+            fi
+
+            if sudo nginx -t; then
+              sudo systemctl reload nginx || sudo nginx -s reload
+            else
+              echo "ERROR: nginx config test failed."
+              exit 1
+            fi
+
+            echo "Rollback finished. Current commit: $(git rev-parse HEAD)"

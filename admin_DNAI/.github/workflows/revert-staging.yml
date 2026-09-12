@@ -1,0 +1,131 @@
+name: Revert Staging Code
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA or tag to revert to (leave empty to revert last commit)'
+        required: false
+        type: string
+      create_revert_commit:
+        description: 'Create a revert commit (true) or reset hard (false)'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  revert:
+    name: Revert Staging Code
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: staging-ismail-admin-panel
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN || github.token }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Revert to previous code
+        id: revert
+        run: |
+          if [ "${{ github.event.inputs.create_revert_commit }}" = "true" ]; then
+            echo "🔄 Creating revert commit for staging..."
+            
+            if [ -z "${{ github.event.inputs.commit_sha }}" ]; then
+              # Revert the last commit
+              LAST_COMMIT=$(git rev-parse HEAD)
+              git revert --no-edit HEAD
+              echo "✅ Reverted commit: $LAST_COMMIT"
+            else
+              # Revert to specific commit
+              COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+              
+              # Check if it's a tag
+              if git rev-parse "$COMMIT_SHA" >/dev/null 2>&1; then
+                echo "📍 Found commit/tag: $COMMIT_SHA"
+                
+                # Get all commits between current HEAD and the target commit
+                CURRENT_SHA=$(git rev-parse HEAD)
+                TARGET_SHA=$(git rev-parse "$COMMIT_SHA")
+                
+                if [ "$CURRENT_SHA" = "$TARGET_SHA" ]; then
+                  echo "⚠️ Already at target commit. Nothing to revert."
+                  exit 0
+                fi
+                
+                # Check if target is an ancestor
+                if git merge-base --is-ancestor "$TARGET_SHA" "$CURRENT_SHA"; then
+                  # Target is in history, revert commits between them
+                  COMMITS_TO_REVERT=$(git rev-list --reverse "$TARGET_SHA"..HEAD)
+                  for commit in $COMMITS_TO_REVERT; do
+                    git revert --no-edit "$commit" || {
+                      echo "⚠️ Could not revert commit $commit (might have conflicts)"
+                      git revert --abort 2>/dev/null || true
+                    }
+                  done
+                  echo "✅ Reverted to commit: $TARGET_SHA"
+                else
+                  echo "❌ Target commit is not in current branch history"
+                  exit 1
+                fi
+              else
+                echo "❌ Commit or tag not found: $COMMIT_SHA"
+                exit 1
+              fi
+            fi
+          else
+            echo "🔄 Performing hard reset on staging..."
+            
+            if [ -z "${{ github.event.inputs.commit_sha }}" ]; then
+              # Reset to previous commit
+              git reset --hard HEAD~1
+              echo "✅ Reset to previous commit"
+            else
+              # Reset to specific commit
+              COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+              
+              if git rev-parse "$COMMIT_SHA" >/dev/null 2>&1; then
+                git reset --hard "$COMMIT_SHA"
+                echo "✅ Reset to commit: $COMMIT_SHA"
+              else
+                echo "❌ Commit or tag not found: $COMMIT_SHA"
+                exit 1
+              fi
+            fi
+          fi
+      
+      - name: Push changes
+        if: steps.revert.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
+        run: |
+          # Configure remote URL with token for authentication
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
+          
+          if [ "${{ github.event.inputs.create_revert_commit }}" = "true" ]; then
+            echo "📤 Pushing revert commit to staging..."
+            git push origin "HEAD:staging-ismail-admin-panel"
+          else
+            echo "📤 Force pushing reset to staging..."
+            git push origin "HEAD:staging-ismail-admin-panel" --force
+          fi
+          
+          echo "✅ Staging revert completed successfully!"
+      
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Staging Revert Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: staging-ismail-admin-panel (Staging)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit SHA**: ${{ github.event.inputs.commit_sha || 'Last commit' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Method**: ${{ github.event.inputs.create_revert_commit == 'true' && 'Revert commit' || 'Hard reset' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ steps.revert.outcome }}" >> $GITHUB_STEP_SUMMARY

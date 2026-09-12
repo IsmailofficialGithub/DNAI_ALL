@@ -1,0 +1,444 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# ===========================================
+# Dependencies
+# ===========================================
+node_modules/
+/.pnp
+.pnp.js
+.pnp.*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ===========================================
+# Build & Production
+# ===========================================
+/build
+/dist
+/.next
+/out
+*.tsbuildinfo
+build/
+dist/
+out/
+*.js.map
+*.css.map
+
+# ===========================================
+# Environment Variables (CRITICAL - Contains Secrets)
+# ===========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+.env*.local
+.env.backup
+.env.*.backup
+.env.staging
+
+# Keep template files (these should be committed)
+!env.local.template
+!env.production.template
+
+# ===========================================
+# Testing
+# ===========================================
+/coverage
+.nyc_output
+*.lcov
+.jest/
+*.test.js.snap
+
+# ===========================================
+# Logs
+# ===========================================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log.*
+
+# ===========================================
+# IDE & Editor Files
+# ===========================================
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ IDEA / WebStorm / PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Cursor IDE
+.cursor/
+.cursorrules
+.cursor/**
+*.cursor
+.cursor-settings/
+.cursor-temp/
+
+# ===========================================
+# OS Files
+# ===========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+.dmrc
+.ICEauthority
+
+# ===========================================
+# Cache & Temporary Files
+# ===========================================
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+*.cache
+.temp/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.bak
+*.backup
+
+# ===========================================
+# TypeScript
+# ===========================================
+*.tsbuildinfo
+.tsbuildinfo
+
+# ===========================================
+# Package Managers
+# ===========================================
+# npm
+.npm
+npm-debug.log*
+
+# yarn
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# pnpm
+.pnpm-debug.log*
+
+# ===========================================
+# Supabase (if using local Supabase CLI)
+# ===========================================
+.supabase/
+
+# ===========================================
+# Security & Secrets
+# ===========================================
+# API Keys, tokens, credentials
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+.secrets/
+credentials.json
+service-account.json
+
+# SSL Certificates & Keys (CRITICAL - Never commit!)
+*.pem
+*.key
+*.crt
+*.cert
+*.cer
+*.p12
+*.pfx
+*.jks
+ssl/
+certs/
+certificates/
+*.csr
+*.csr.pem
+
+# ===========================================
+# Database
+# ===========================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ===========================================
+# Backup Files
+# ===========================================
+*.backup
+*.bak
+*.old
+*.orig
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+
+# ===========================================
+# Build Artifacts & Compiled Files
+# ===========================================
+# Source maps (expose source code - should be ignored in production)
+*.map
+*.map.js
+*.map.css
+sourcemaps/
+
+# Compiled JavaScript (if using TypeScript compilation)
+*.compiled.js
+*.min.js
+*.min.css
+*.bundle.js
+*.chunk.js
+
+# ===========================================
+# Runtime & Process Files
+# ===========================================
+# Process ID files
+*.pid
+*.pid.lock
+.pid
+
+# Lock files (keep package-lock.json but ignore others)
+package-lock.json.backup
+yarn.lock.backup
+.lock-wscript
+
+# Runtime directories
+.run/
+.runtime/
+.pids/
+
+# ===========================================
+# Session & Authentication Files
+# ===========================================
+# Session storage
+sessions/
+.sessions/
+
+# JWT secrets
+jwt-secret.key
+jwt-private.pem
+jwt-public.pem
+
+# OAuth tokens
+.oauth-tokens
+oauth-tokens.json
+
+# ===========================================
+# Temporary & Cache Directories
+# ===========================================
+# Application cache
+cache/
+*.cache
+
+# Temporary uploads
+uploads/temp/
+temp-uploads/
+/tmp/
+
+# User uploads (if storing locally)
+user-uploads/
+media/temp/
+
+# ===========================================
+# Testing & Development Tools
+# ===========================================
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
+.coverage/
+
+# E2E testing
+e2e/screenshots/
+e2e/videos/
+.cypress/
+cypress/videos/
+cypress/screenshots/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# ===========================================
+# Documentation Builds
+# ===========================================
+# Generated documentation
+docs/build/
+docs/dist/
+.docusaurus/
+.vuepress/dist/
+
+# ===========================================
+# Local Development Overrides
+# ===========================================
+# Local overrides (should not be committed)
+local/
+.local/
+local.config.*
+local-*.js
+local-*.json
+
+# ===========================================
+# React / Create React App
+# ===========================================
+# Allow public/index.html (required for React builds)
+!public/index.html
+
+# ===========================================
+# Miscellaneous
+# ===========================================
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.parcel-cache
+
+# Next.js
+.next/
+out/
+
+# Nuxt.js
+.nuxt/
+dist/
+
+# Gatsby files
+.cache/
+
+# Storybook build outputs
+.out
+.storybook-out
+storybook-static
+
+# Temporary folders
+tmp/
+temp/
+
+# ===========================================
+# Deployment & Misc
+# ===========================================
+.vercel
+.serverless
+*.rej
+
+# ===========================================
+# Project Specific / Local Cleanup
+# ===========================================
+# Prevent documentation and database scripts from being pushed
+*.md
+*.sql
+!README.md
+!migration/*.sql
+
+# Old documentation files (now in src/components/Documentation.tsx)
+dnai-docs.tsx
+
+# Local HTML exports and evaluations
+voice-agent-complete.html
+*-complete.html
+evaluation/
+benchmarks/
+*.eval.json
+
+# Local scripts and experiments
+scripts/temp/
+experimentation/
+*.local.tsx
+*.dev.tsx
+
+# Backup files potentially missed
+*.bak.tsx
+*.old.tsx
+
+package-lock.json

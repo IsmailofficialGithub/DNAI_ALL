@@ -1,0 +1,308 @@
+{
+  "name": "Stripe Payment Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe/create-checkout-session",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "create-checkout-webhook",
+      "name": "Create Checkout Session Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "stripe-checkout-create"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "checkoutSession",
+        "amount": "={{ $json.body.amount }}",
+        "currency": "={{ $json.body.currency || 'usd' }}",
+        "successUrl": "={{ $json.body.success_url }}",
+        "cancelUrl": "={{ $json.body.cancel_url }}",
+        "metadata": "={{ JSON.stringify($json.body.metadata) }}"
+      },
+      "id": "stripe-create-session",
+      "name": "Stripe Create Session",
+      "type": "n8n-nodes-base.stripe",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "stripeApi": {
+          "id": "your-stripe-credentials-id",
+          "name": "Stripe Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"sessionId\": $json.id, \"url\": $json.url } }}"
+      },
+      "id": "respond-checkout",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe/verify-payment",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "verify-payment-webhook",
+      "name": "Verify Payment Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "webhookId": "stripe-verify-payment"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "resource": "checkoutSession",
+        "sessionId": "={{ $json.body.session_id }}"
+      },
+      "id": "stripe-get-session",
+      "name": "Stripe Get Session",
+      "type": "n8n-nodes-base.stripe",
+      "typeVersion": 1,
+      "position": [450, 500],
+      "credentials": {
+        "stripeApi": {
+          "id": "your-stripe-credentials-id",
+          "name": "Stripe Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.payment_status }}",
+              "operation": "equals",
+              "value2": "paid"
+            }
+          ]
+        }
+      },
+      "id": "check-payment-status",
+      "name": "Check Payment Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"session_id\": $json.id, \"payment_intent\": $json.payment_intent, \"amount_total\": $json.amount_total / 100 } }}"
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": false, \"error\": \"Payment not completed\", \"payment_status\": $json.payment_status } }}"
+      },
+      "id": "respond-failed",
+      "name": "Respond Failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "stripe/webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "stripe-webhook",
+      "name": "Stripe Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 700],
+      "webhookId": "stripe-payment-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "operation": "equals",
+              "value2": "checkout.session.completed"
+            }
+          ]
+        }
+      },
+      "id": "check-event-type",
+      "name": "Check Event Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 700]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "purchases",
+        "id": "={{ $json.data.object.metadata.purchase_id }}",
+        "fields": {
+          "payment_status": "completed",
+          "completed_at": "={{ $now }}",
+          "payment_provider_id": "={{ $json.data.object.id }}"
+        }
+      },
+      "id": "update-purchase",
+      "name": "Update Purchase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [650, 600],
+      "credentials": {
+        "postgres": {
+          "id": "your-supabase-credentials-id",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Call Supabase RPC function to add credits\nconst { createClient } = require('@supabase/supabase-js');\nconst supabase = createClient(\n  process.env.SUPABASE_URL,\n  process.env.SUPABASE_SERVICE_ROLE_KEY\n);\n\nconst result = await supabase.rpc('add_credits', {\n  p_user_id: $json.data.object.metadata.user_id,\n  p_amount: parseFloat($json.data.object.metadata.credits_amount),\n  p_transaction_type: 'purchase',\n  p_purchase_id: $json.data.object.metadata.purchase_id,\n});\n\nreturn result;"
+      },
+      "id": "add-credits",
+      "name": "Add Credits",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 600]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"received\": true } }}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 600]
+    }
+  ],
+  "connections": {
+    "Create Checkout Session Webhook": {
+      "main": [
+        [
+          {
+            "node": "Stripe Create Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe Create Session": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Payment Webhook": {
+      "main": [
+        [
+          {
+            "node": "Stripe Get Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe Get Session": {
+      "main": [
+        [
+          {
+            "node": "Check Payment Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Payment Status": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stripe Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Event Type": {
+      "main": [
+        [
+          {
+            "node": "Update Purchase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Purchase": {
+      "main": [
+        [
+          {
+            "node": "Add Credits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Credits": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
