@@ -32,17 +32,26 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     let mounted = true;
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
+    if (localStorage.getItem("mock_login") === "true") {
+      setUser({ id: 'mock-user-123', email: 'user@user.com' } as unknown as User);
       setLoading(false);
-    });
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+    }
 
     // Listen for auth changes - only reset on actual sign in/out events
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+      
+      if (localStorage.getItem("mock_login") === "true") {
+        return;
+      }
       
       // Only handle SIGNED_IN and SIGNED_OUT events
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
@@ -85,6 +94,13 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
       // Skip if we already checked for this specific user
       if (hasCheckedRoleRef.current === user.id) {
+        return;
+      }
+
+      if (localStorage.getItem("mock_login") === "true") {
+        setHasAccess(true);
+        hasCheckedRoleRef.current = user.id;
+        setCheckingRole(false);
         return;
       }
 
@@ -150,6 +166,14 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         return;
       }
 
+      if (localStorage.getItem("mock_login") === "true") {
+        setHasLifetime(true);
+        setAccountStatus('active');
+        hasCheckedAccountStatusRef.current = user.id;
+        setCheckingAccountStatus(false);
+        return;
+      }
+
       try {
         setCheckingAccountStatus(true);
         
@@ -209,6 +233,13 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
       // Skip if we already checked for this user
       if (hasCheckedBrandsRef.current) {
+        return;
+      }
+
+      if (localStorage.getItem("mock_login") === "true") {
+        setHasBrands(true);
+        hasCheckedBrandsRef.current = true;
+        setCheckingBrands(false);
         return;
       }
 

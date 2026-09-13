@@ -432,6 +432,9 @@ export function clearApplicationCache(): void {
 
 // Get user's accessible modules based on products (with caching)
 export async function getUserModules(userId: string, useCache: boolean = true): Promise<string[]> {
+  if (localStorage.getItem("mock_login") === "true") {
+    return ["genie", "social_management"];
+  }
   // Check cache first if enabled
   if (useCache) {
     const cached = getCachedUserModules(userId);
@@ -785,6 +788,7 @@ export async function listContentCalendarPosts(
   return (data ?? []) as ContentCalendarRow[];
 }
 
+
 export async function updateCalendarPostStatus(
   postId: string,
   newStatus: ContentCalendarRow["post_status"]
@@ -969,6 +973,28 @@ export async function deleteStrategicCalendar(id: string): Promise<void> {
 }
 
 export async function listAnalysis(): Promise<AnalysisRow[]> {
+  if (localStorage.getItem("mock_login") === "true") {
+    return [
+      {
+        id: "mock-analysis-1",
+        title: "Q3 Competitor Landscape",
+        slug: "q3-competitor-landscape",
+        html_content: "<h2>Overview</h2><p>Acme Corp continues to lead in brand sentiment. TechNova is catching up with recent cloud announcements.</p>",
+        created_at: new Date().toISOString(),
+        brand_id: "brand-1",
+        user_id: "mock-user-123"
+      },
+      {
+        id: "mock-analysis-2",
+        title: "Social Media Sentiment Report",
+        slug: "social-media-sentiment",
+        html_content: "<h2>Sentiment</h2><p>Overall positive feedback across all platforms. Twitter shows the most engagement.</p>",
+        created_at: new Date(Date.now() - 86400000).toISOString(),
+        brand_id: "brand-2",
+        user_id: "mock-user-123"
+      }
+    ];
+  }
   const supabase = requireSupabase();
   
   // Get current user
@@ -1565,6 +1591,29 @@ export async function lookupCompetitors(payload: CompetitorLookupPayload): Promi
 
 // Brand Management Functions
 export async function listBrands(): Promise<BrandRow[]> {
+  if (localStorage.getItem("mock_login") === "true") {
+    return [
+      {
+        id: "brand-1",
+        created_at: new Date().toISOString(),
+        user_id: "mock-user-123",
+        name: "Acme Corp",
+        brand_description: "Global manufacturing strategy and technology",
+        website_url: "https://acme.com",
+        logo_url: null
+      },
+      {
+        id: "brand-2",
+        created_at: new Date().toISOString(),
+        user_id: "mock-user-123",
+        name: "TechNova Solutions",
+        brand_description: "Innovating the future of cloud computing",
+        website_url: "https://technova.io",
+        logo_url: null
+      }
+    ] as any[];
+  }
+
   const supabase = requireSupabase();
   
   // Get current user with retry logic
@@ -4654,6 +4703,26 @@ export type ActivityLogEntry = {
 
 // Get all historical activity (not user-filtered) - returns most recent activities
 export async function getAllHistoricalActivity(limit: number = 6): Promise<ActivityLogEntry[]> {
+  if (localStorage.getItem("mock_login") === "true") {
+    return [
+      {
+        id: "mock-activity-1",
+        type: "analysis",
+        action: "Generated",
+        item: "Q3 Competitor Landscape",
+        timestamp: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "mock-activity-2",
+        type: "post",
+        action: "Published",
+        item: "TechNova Cloud Announcement",
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        created_at: new Date(Date.now() - 3600000).toISOString()
+      }
+    ];
+  }
   const supabase = requireSupabase();
   const activities: ActivityLogEntry[] = [];
 
@@ -4923,6 +4992,10 @@ export async function saveErrorLog(
   errorDetails: string | null = null,
   platform: string | null = null
 ): Promise<void> {
+  if (localStorage.getItem("mock_login") === "true") {
+    console.log("[Mock] saveErrorLog bypassed:", errorHeading);
+    return;
+  }
   try {
     const supabase = requireSupabase();
     

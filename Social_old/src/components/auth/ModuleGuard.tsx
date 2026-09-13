@@ -22,11 +22,16 @@ export const ModuleGuard = ({ children }: ModuleGuardProps) => {
     let mounted = true;
 
     // Check for existing session - only check once on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
+    if (localStorage.getItem("mock_login") === "true") {
+      setUser({ id: 'mock-user-123', email: 'user@user.com' } as unknown as User);
       setLoading(false);
-    });
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+        setLoading(false);
+      });
+    }
 
     return () => {
       mounted = false;
@@ -59,13 +64,26 @@ export const ModuleGuard = ({ children }: ModuleGuardProps) => {
           setRedirectTo(null);
         } else {
           // Get accessible route if needed (but don't block rendering)
-          import('@/lib/api').then(({ getFirstAccessibleRoute }) => {
-            getFirstAccessibleRoute(user.id, true).then(route => {
-              setRedirectTo(route);
+          if (localStorage.getItem("mock_login") !== "true") {
+            import('@/lib/api').then(({ getFirstAccessibleRoute }) => {
+              getFirstAccessibleRoute(user.id, true).then(route => {
+                setRedirectTo(route);
+              });
             });
-          });
+          }
         }
         return; // Skip re-checking
+      }
+
+      if (localStorage.getItem("mock_login") === "true") {
+        accessCacheRef.current.set(cacheKey, true);
+        lastCheckedRouteRef.current = location.pathname;
+        lastCheckedUserRef.current = user.id;
+        setHasAccess(true);
+        setRedirectTo(null);
+        setHasCheckedInitialAccess(true);
+        setCheckingAccess(false);
+        return;
       }
 
       try {

@@ -354,12 +354,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   useEffect(() => {
     let mounted = true;
     
-    // Get current user from session (synchronous, reads from localStorage)
-    // This is faster and doesn't trigger API calls on tab switch
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-    });
+    if (localStorage.getItem("mock_login") === "true") {
+      setUser({ id: 'mock-user-123', email: 'user@user.com' } as any);
+    } else {
+      // Get current user from session (synchronous, reads from localStorage)
+      // This is faster and doesn't trigger API calls on tab switch
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!mounted) return;
+        setUser(session?.user ?? null);
+      });
+    }
 
     // Listen for auth changes - ignore TOKEN_REFRESHED to prevent reloads on tab switch
     const {

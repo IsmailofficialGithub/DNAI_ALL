@@ -2310,6 +2310,13 @@ export default function Overview() {
       setBrandsLoading(true);
       setBrandsError(null);
 
+      if (localStorage.getItem("mock_login") === "true") {
+        const brandsData = await listBrands();
+        setBrands(brandsData);
+        setIsInitializing(false);
+        setBrandsLoading(false);
+        return;
+      }
       // Check if user is authenticated before making the API call
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {

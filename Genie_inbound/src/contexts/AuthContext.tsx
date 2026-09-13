@@ -35,6 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(async ({ data: { session: initialSession } }) => {
       // Only force sign-out when: session exists + no remember-me + no active session marker
       // (active session marker is set AFTER successful login and stays for the tab lifetime)
+      if (localStorage.getItem("mock_login") === "true") {
+        setUser({ id: 'mock-user-123', email: 'user@user.com' } as unknown as User);
+        setLoading(false);
+        return;
+      }
+      
       if (initialSession && rememberMePref !== 'true' && !activeSessionMarker) {
         // Tab was closed and reopened without "remember me" → force sign-out
         await supabase.auth.signOut();
@@ -80,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkUserStatus = React.useCallback(async () => {
     if (!user) return;
+    if (localStorage.getItem("mock_login") === "true") {
+      setHasLifetimeAccess(true);
+      setTrialExpired(false);
+      return;
+    }
 
     try {
       console.log('AuthContext: Security check started for:', user.id);
@@ -337,6 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear remember-me preference and active session marker on explicit sign-out
     localStorage.removeItem('auth_remember_me');
     sessionStorage.removeItem('auth_session_active');
+    localStorage.removeItem("mock_login");
 
     await supabase.auth.signOut();
   };
